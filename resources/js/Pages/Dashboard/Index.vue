@@ -51,6 +51,7 @@ const hotspots = ref([])
 const loading = ref(false)
 const errorMsg = ref(null)
 const demoFireOblast = ref(null)
+const demoNotifying = ref(false)
 
 const activeTab = ref('map')
 
@@ -375,6 +376,16 @@ function toggleDemoFire() {
     }
 }
 
+async function sendDemoNotify(type) {
+    if (!selectedOblast.value || demoNotifying.value) return
+    demoNotifying.value = true
+    try {
+        await axios.post('/demo/notify', { type, oblast: selectedOblast.value.name })
+    } finally {
+        demoNotifying.value = false
+    }
+}
+
 function generateFakeHotspots(oblast) {
     const count = 5 + Math.floor(Math.random() * 8) // 5–12 очагов
     const spots = []
@@ -611,12 +622,23 @@ const logout = () => router.post('/logout')
                     <span v-else class="afs-summary-bar__none">
                         Активных пожаров не обнаружено
                     </span>
-                    <!-- DEMO кнопка -->
-                    <button v-if="selectedOblast && !loading" class="afs-demo-btn"
-                        :class="{ 'afs-demo-btn--active': demoFireOblast === selectedOblast?.name }"
-                        @click="toggleDemoFire">
-                        {{ demoFireOblast === selectedOblast?.name ? '✕ Сбросить демо' : '🔥 Тест пожара' }}
-                    </button>
+                    <!-- DEMO кнопки -->
+                    <div v-if="selectedOblast && !loading" class="afs-demo-group">
+                        <span class="afs-demo-label">ДЕМО</span>
+                        <button class="afs-demo-btn"
+                            :class="{ 'afs-demo-btn--active': demoFireOblast === selectedOblast?.name }"
+                            @click="toggleDemoFire">
+                            {{ demoFireOblast === selectedOblast?.name ? '✕ Сбросить' : '🔥 Показать пожар' }}
+                        </button>
+                        <button class="afs-demo-btn afs-demo-btn--safe" :disabled="demoNotifying"
+                            @click="sendDemoNotify('no_fire')">
+                            ✅ Уведомить: нет пожаров
+                        </button>
+                        <button class="afs-demo-btn afs-demo-btn--fire" :disabled="demoNotifying"
+                            @click="sendDemoNotify('fire')">
+                            🔥 Уведомить: пожар!
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Placeholder when nothing selected -->
@@ -1694,9 +1716,23 @@ const logout = () => router.post('/logout')
     display: block;
 }
 
-.afs-demo-btn {
+.afs-demo-group {
     margin-left: auto;
-    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.afs-demo-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #555;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.afs-demo-btn {
+    padding: 5px 12px;
     border-radius: 8px;
     border: 1px solid #e85c00;
     background: transparent;
@@ -1704,16 +1740,39 @@ const logout = () => router.post('/logout')
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, opacity 0.15s;
 }
 
-.afs-demo-btn:hover {
+.afs-demo-btn:hover:not(:disabled) {
     background: rgba(232, 92, 0, 0.15);
+}
+
+.afs-demo-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
 }
 
 .afs-demo-btn--active {
     background: rgba(204, 0, 0, 0.2);
     border-color: #cc0000;
     color: #ff6666;
+}
+
+.afs-demo-btn--safe {
+    border-color: #2a7a2a;
+    color: #4caf50;
+}
+
+.afs-demo-btn--safe:hover:not(:disabled) {
+    background: rgba(76, 175, 80, 0.15);
+}
+
+.afs-demo-btn--fire {
+    border-color: #cc0000;
+    color: #ff6666;
+}
+
+.afs-demo-btn--fire:hover:not(:disabled) {
+    background: rgba(204, 0, 0, 0.15);
 }
 </style>
