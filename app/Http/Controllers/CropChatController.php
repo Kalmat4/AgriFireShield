@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CropChatSession;
 use App\Models\CropChatMessage;
+use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -97,6 +98,16 @@ class CropChatController extends Controller
             ->values()
             ->toArray();
 
+        // Attach user's zone context so AI knows the region
+        $zone = Zone::where('user_id', $user->id)->first();
+        $zoneContext = $zone ? [
+            'region'     => $zone->oblast_name,
+            'bbox_west'  => $zone->bbox_west,
+            'bbox_east'  => $zone->bbox_east,
+            'bbox_south' => $zone->bbox_south,
+            'bbox_north' => $zone->bbox_north,
+        ] : null;
+
         // Call n8n webhook
         $url     = env('N8N_CROP_WEBHOOK_URL', self::CROP_WEBHOOK_URL);
         $n8nResp = Http::timeout(60)->withoutVerifying()->post($url, [
@@ -105,6 +116,7 @@ class CropChatController extends Controller
             'mediaType' => $mediaType,
             'history'   => $historyForN8n,
             'sessionId' => (string) $session->id,
+            'zone'      => $zoneContext,
         ]);
 
         $n8nData = $n8nResp->json();
