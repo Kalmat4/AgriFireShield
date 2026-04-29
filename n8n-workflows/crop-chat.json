@@ -1,0 +1,143 @@
+{
+  "name": "AgriFireShield – Crop Health Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crop-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "crop-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the Anthropic messages array from incoming request\nconst body = $input.first().json.body ?? $input.first().json;\n\nconst userText   = body.message   ?? '';\nconst imageB64   = body.image     ?? null;\nconst mediaType  = body.mediaType ?? 'image/jpeg';\nconst history    = body.history   ?? [];\n\n// Rebuild history as Anthropic messages\nconst messages = history.map(h => ({\n  role: h.role === 'assistant' ? 'assistant' : 'user',\n  content: h.text ?? ''\n}));\n\n// Build current user turn content\nconst userContent = [];\n\nif (imageB64) {\n  userContent.push({\n    type: 'image',\n    source: {\n      type: 'base64',\n      media_type: mediaType,\n      data: imageB64\n    }\n  });\n}\n\nconst textToSend = userText || 'Проанализируй это изображение урожая и определи его состояние здоровья.';\nuserContent.push({ type: 'text', text: textToSend });\n\nmessages.push({ role: 'user', content: userContent });\n\nreturn [{\n  json: {\n    anthropicBody: {\n      model: 'claude-opus-4-7',\n      max_tokens: 1500,\n      system: `Ты опытный агроном и специалист по защите растений с 20-летним стажем. Помогаешь фермерам Казахстана.\\n\\nПри анализе фотографии урожая:\\n1. Определи культуру (пшеница, подсолнечник, кукуруза и т.д.) если видно\\n2. Оцени общее состояние: ЗДОРОВОЕ / ПОД УГРОЗОЙ / БОЛЬНОЕ\\n3. Выяви признаки болезней, вредителей или дефицитов питательных веществ\\n4. Дай прогноз развития ситуации без вмешательства\\n5. Предложи конкретные меры лечения или профилактики\\n\\nОтвечай структурированно, на русском языке. Будь конкретен и практичен.`,\n      messages\n    }\n  }\n}];\n"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Build Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.anthropicBody) }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Anthropic API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "anthropic-creds",
+          "name": "Anthropic API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract text from Anthropic response\nconst resp = $input.first().json;\n\nlet text = '';\nif (resp.content && Array.isArray(resp.content)) {\n  text = resp.content\n    .filter(c => c.type === 'text')\n    .map(c => c.text)\n    .join('\\n');\n} else if (resp.error) {\n  text = `Ошибка API: ${resp.error.message ?? JSON.stringify(resp.error)}`;\n} else {\n  text = JSON.stringify(resp, null, 2);\n}\n\nreturn [{ json: { response: text } }];\n"
+      },
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Messages": {
+      "main": [
+        [
+          {
+            "node": "Anthropic API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic API": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "crop-chat-workflow",
+  "tags": []
+}

@@ -12,6 +12,7 @@ class DashboardController extends Controller
     {
         return Inertia::render('Dashboard/Index', [
             'currentZone' => Auth::user()->zone,
+            'sessionId'   => session()->getId(),
         ]);
     }
 }
