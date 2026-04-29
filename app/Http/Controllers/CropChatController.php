@@ -108,15 +108,22 @@ class CropChatController extends Controller
             'bbox_north' => $zone->bbox_north,
         ] : null;
 
-        // Call n8n webhook
-        $url     = env('N8N_CROP_WEBHOOK_URL', self::CROP_WEBHOOK_URL);
-        $n8nResp = Http::timeout(60)->withoutVerifying()->post($url, [
+        // Call n8n webhook — image as binary multipart so n8n gets a native binary item;
+        // history/zone are JSON-encoded strings since multipart can't carry nested arrays.
+        $url  = env('N8N_CROP_WEBHOOK_URL', self::CROP_WEBHOOK_URL);
+        $http = Http::timeout(60)->withoutVerifying();
+
+        if ($image) {
+            $ext  = explode('/', $mediaType)[1] ?? 'jpg';
+            $http = $http->attach('image', base64_decode($image), "photo.{$ext}", ['Content-Type' => $mediaType]);
+        }
+
+        $n8nResp = $http->post($url, [
             'message'   => $message,
-            'image'     => $image,
             'mediaType' => $mediaType,
-            'history'   => $historyForN8n,
+            'history'   => json_encode($historyForN8n, JSON_UNESCAPED_UNICODE),
             'sessionId' => (string) $session->id,
-            'zone'      => $zoneContext,
+            'zone'      => json_encode($zoneContext, JSON_UNESCAPED_UNICODE),
         ]);
 
         $n8nData = $n8nResp->json();
