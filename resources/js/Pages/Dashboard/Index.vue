@@ -20,22 +20,26 @@ const props = defineProps({
 })
 
 // ── Oblast data ───────────────────────────────────────────────────────────────
+// Порядок важен: последний добавленный слой перехватывает клики первым.
+// Большие фоновые регионы — первыми; более приоритетные — позже.
 const OBLASTS = [
-    { name: 'Акмолинская',            west: 68.9, south: 50.5, east: 75.5, north: 54.0 },
-    { name: 'Актюбинская',            west: 55.0, south: 46.0, east: 67.5, north: 51.5 },
-    { name: 'Алматинская',            west: 75.0, south: 42.5, east: 80.5, north: 45.5 },
-    { name: 'Атырауская',             west: 49.0, south: 45.5, east: 56.5, north: 48.5 },
-    { name: 'Восточно-Казахстанская', west: 79.5, south: 46.5, east: 87.5, north: 50.5 },
-    { name: 'Жамбылская',             west: 69.5, south: 42.0, east: 77.0, north: 45.5 },
-    { name: 'Западно-Казахстанская',  west: 49.5, south: 49.5, east: 56.5, north: 52.5 },
-    { name: 'Карагандинская',         west: 68.0, south: 46.0, east: 78.0, north: 50.5 },
-    { name: 'Костанайская',           west: 61.0, south: 51.0, east: 68.5, north: 54.5 },
-    { name: 'Кызылординская',         west: 60.0, south: 43.5, east: 69.5, north: 47.5 },
-    { name: 'Мангыстауская',          west: 50.0, south: 41.5, east: 57.0, north: 46.0 },
-    { name: 'Павлодарская',           west: 73.5, south: 50.5, east: 79.5, north: 54.5 },
-    { name: 'Северо-Казахстанская',   west: 67.0, south: 53.0, east: 73.5, north: 55.5 },
-    { name: 'Туркестанская',          west: 66.0, south: 41.0, east: 72.5, north: 44.5 },
-    { name: 'Улытауская',             west: 60.0, south: 46.5, east: 68.0, north: 50.5 },
+    { name: 'Жамбылская',             west: 67.5, south: 42.5, east: 75.5, north: 46.5 },
+    { name: 'Кызылординская',         west: 57.0, south: 42.5, east: 67.5, north: 47.5 },
+    { name: 'Костанайская',           west: 60.0, south: 51.0, east: 67.5, north: 55.4 },
+    { name: 'Западно-Казахстанская',  west: 49.5, south: 49.5, east: 55.5, north: 52.5 },
+    { name: 'Мангыстауская',          west: 49.0, south: 41.5, east: 57.0, north: 46.5 },
+    { name: 'Атырауская',             west: 49.5, south: 46.5, east: 57.0, north: 49.5 },
+    { name: 'Туркестанская',          west: 57.0, south: 40.5, east: 75.5, north: 42.5 },
+    { name: 'Алматинская',            west: 75.5, south: 42.5, east: 84.0, north: 46.5 },
+    { name: 'Акмолинская',            west: 67.5, south: 50.5, east: 73.5, north: 53.5 },
+    { name: 'Павлодарская',           west: 73.5, south: 50.5, east: 79.5, north: 55.4 },
+    { name: 'Северо-Казахстанская',   west: 67.5, south: 53.5, east: 73.5, north: 55.4 },
+    { name: 'Восточно-Казахстанская', west: 79.5, south: 46.5, east: 87.5, north: 51.5 },
+    // Эти перекрываются с соседями — добавляются позже, чтобы перехватывать клики:
+    { name: 'Актюбинская',            west: 55.5, south: 47.5, east: 67.5, north: 51.0 },
+    { name: 'Карагандинская',         west: 71.5, south: 44.5, east: 79.5, north: 50.5 },
+    { name: 'Улытауская',             west: 61.0, south: 46.5, east: 71.5, north: 50.5 },
+    // Города — последними (наивысший приоритет кликов):
     { name: 'г. Алматы',              west: 76.6, south: 43.0, east: 77.3, north: 43.5 },
     { name: 'г. Астана',              west: 71.2, south: 50.9, east: 71.8, north: 51.3 },
 ]
@@ -237,10 +241,36 @@ function capturePhoto() {
     closeCamera()
 }
 
+// ── Detail-level state ────────────────────────────────────────────────────────
+const selectionLevel = ref('oblast') // 'oblast' | 'detail'
+const selectedCity   = ref(null)
+
+// ── Kazakhstan cities per oblast ──────────────────────────────────────────────
+const CITIES = {
+    'Акмолинская':            [{ name: 'Кокшетау',      lat: 53.284, lon: 69.396 }, { name: 'Степногорск',   lat: 52.346, lon: 71.889 }, { name: 'Атбасар',       lat: 51.806, lon: 68.362 }, { name: 'Макинск',       lat: 52.638, lon: 70.857 }],
+    'Актюбинская':            [{ name: 'Актобе',         lat: 50.280, lon: 57.207 }, { name: 'Алга',          lat: 49.900, lon: 57.333 }, { name: 'Хромтау',       lat: 50.254, lon: 58.449 }, { name: 'Кандыагаш',     lat: 49.464, lon: 57.425 }, { name: 'Шалқар',        lat: 47.834, lon: 59.611 }],
+    'Алматинская':            [{ name: 'Талдықорған',    lat: 45.015, lon: 78.373 }, { name: 'Қапшағай',      lat: 43.860, lon: 77.071 }, { name: 'Текелі',        lat: 44.858, lon: 78.766 }, { name: 'Есік',          lat: 43.349, lon: 77.440 }, { name: 'Қаскелең',      lat: 43.199, lon: 76.626 }],
+    'Атырауская':             [{ name: 'Атырау',         lat: 47.117, lon: 51.924 }, { name: 'Доссор',        lat: 47.534, lon: 53.037 }, { name: 'Құлсары',       lat: 46.991, lon: 54.024 }, { name: 'Махамбет',      lat: 47.673, lon: 51.545 }],
+    'Восточно-Казахстанская': [{ name: 'Өскемен',        lat: 49.948, lon: 82.628 }, { name: 'Семей',         lat: 50.411, lon: 80.226 }, { name: 'Риддер',        lat: 50.347, lon: 83.512 }, { name: 'Аягөз',         lat: 47.966, lon: 80.432 }, { name: 'Зайсан',        lat: 47.477, lon: 84.873 }, { name: 'Шемонайха',     lat: 50.633, lon: 81.923 }],
+    'Жамбылская':             [{ name: 'Тараз',          lat: 42.900, lon: 71.373 }, { name: 'Шу',            lat: 43.596, lon: 73.756 }, { name: 'Каратау',       lat: 43.172, lon: 70.454 }, { name: 'Жанатас',       lat: 43.062, lon: 70.375 }, { name: 'Қордай',        lat: 43.302, lon: 74.095 }],
+    'Западно-Казахстанская':  [{ name: 'Орал',           lat: 51.233, lon: 51.371 }, { name: 'Аксай',         lat: 51.179, lon: 53.003 }, { name: 'Шыңғырлау',     lat: 50.247, lon: 52.441 }, { name: 'Жаңақала',      lat: 50.266, lon: 50.257 }],
+    'Карагандинская':         [{ name: 'Қарағанды',      lat: 49.807, lon: 73.088 }, { name: 'Теміртау',      lat: 50.058, lon: 72.961 }, { name: 'Балқаш',        lat: 46.848, lon: 74.995 }, { name: 'Сарань',        lat: 49.804, lon: 72.864 }, { name: 'Приозерск',     lat: 46.047, lon: 73.897 }],
+    'Костанайская':           [{ name: 'Қостанай',       lat: 53.215, lon: 63.627 }, { name: 'Рудный',        lat: 52.957, lon: 63.118 }, { name: 'Лисаковск',     lat: 52.646, lon: 62.489 }, { name: 'Арқалық',       lat: 50.248, lon: 66.887 }, { name: 'Житіқара',      lat: 52.187, lon: 61.198 }],
+    'Кызылординская':         [{ name: 'Қызылорда',      lat: 44.853, lon: 65.510 }, { name: 'Байқоңыр',      lat: 45.618, lon: 63.311 }, { name: 'Арал',          lat: 46.797, lon: 61.672 }, { name: 'Қазалы',        lat: 45.762, lon: 62.104 }, { name: 'Шиелі',         lat: 44.183, lon: 66.742 }],
+    'Мангыстауская':          [{ name: 'Ақтау',          lat: 43.654, lon: 51.175 }, { name: 'Жаңаөзен',      lat: 43.338, lon: 52.869 }, { name: 'Бейнеу',        lat: 45.317, lon: 55.096 }, { name: 'Форт-Шевченко', lat: 44.509, lon: 50.247 }],
+    'Павлодарская':           [{ name: 'Павлодар',       lat: 52.285, lon: 76.966 }, { name: 'Екібастұз',     lat: 51.710, lon: 75.365 }, { name: 'Ақсу',          lat: 52.044, lon: 76.907 }, { name: 'Шарбақты',      lat: 52.537, lon: 78.982 }],
+    'Северо-Казахстанская':   [{ name: 'Петропавл',      lat: 54.876, lon: 69.158 }, { name: 'Мамлют',        lat: 54.707, lon: 68.577 }, { name: 'Тайынша',       lat: 53.836, lon: 69.776 }, { name: 'Бұлаево',       lat: 54.903, lon: 70.432 }, { name: 'Есіл',          lat: 51.960, lon: 66.404 }],
+    'Туркестанская':          [{ name: 'Шымкент',        lat: 42.317, lon: 69.590 }, { name: 'Түркістан',     lat: 43.298, lon: 68.270 }, { name: 'Кентау',        lat: 43.518, lon: 68.510 }, { name: 'Арыс',          lat: 42.428, lon: 68.804 }, { name: 'Сарыағаш',      lat: 41.456, lon: 69.173 }, { name: 'Шардара',       lat: 41.259, lon: 68.085 }],
+    'Улытауская':             [{ name: 'Жезқазған',      lat: 47.803, lon: 67.707 }, { name: 'Сатпаев',       lat: 47.903, lon: 67.524 }, { name: 'Ұлытау',        lat: 48.619, lon: 67.006 }, { name: 'Жайрем',        lat: 48.021, lon: 70.785 }],
+    'г. Алматы':              [{ name: 'Алмалинский р-н', lat: 43.262, lon: 76.946 }, { name: 'Бостандық р-н', lat: 43.249, lon: 76.858 }, { name: 'Медеу р-н',     lat: 43.268, lon: 77.014 }, { name: 'Алатау р-н',    lat: 43.217, lon: 76.999 }, { name: 'Жетісу р-н',    lat: 43.292, lon: 77.050 }, { name: 'Наурызбай р-н', lat: 43.206, lon: 76.791 }, { name: 'Түрксіб р-н',   lat: 43.311, lon: 77.046 }, { name: 'Әуезов р-н',    lat: 43.224, lon: 76.875 }],
+    'г. Астана':              [{ name: 'Есіл р-н',       lat: 51.134, lon: 71.502 }, { name: 'Алматы р-н',    lat: 51.159, lon: 71.413 }, { name: 'Байқоңыр р-н',  lat: 51.203, lon: 71.381 }, { name: 'Нұра р-н',      lat: 51.221, lon: 71.509 }, { name: 'Сарыарқа р-н',  lat: 51.186, lon: 71.500 }],
+}
+
 // ── Leaflet internals (non-reactive) ─────────────────────────────────────────
 let map             = null
 let rectLayers      = {}
 let hotspotLayer    = null
+let cityMarkerLayer = null
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const normalStyle = () => ({ color: '#e85c00', weight: 1.5, fillColor: '#e85c00', fillOpacity: 0.08 })
@@ -259,7 +289,8 @@ function initMap() {
         maxZoom: 18,
     }).addTo(map)
 
-    hotspotLayer = L.layerGroup().addTo(map)
+    hotspotLayer    = L.layerGroup().addTo(map)
+    cityMarkerLayer = L.layerGroup().addTo(map)
 
     OBLASTS.forEach(oblast => {
         const rect = L.rectangle(oblastBounds(oblast), normalStyle())
@@ -276,14 +307,60 @@ function initMap() {
     }
 }
 
+// ── Detail drill-down ─────────────────────────────────────────────────────────
+function drawDetail(oblast) {
+    cityMarkerLayer.clearLayers()
+
+    ;(CITIES[oblast.name] ?? []).forEach(city => {
+        L.circleMarker([city.lat, city.lon], {
+            radius: 6, color: '#fff', fillColor: '#4db8ff', fillOpacity: 1, weight: 1.5,
+        }).addTo(cityMarkerLayer).bindTooltip(city.name, { permanent: false })
+        .on('click', () => selectCity(city))
+    })
+}
+
+function clearDetail() {
+    cityMarkerLayer?.clearLayers()
+}
+
+async function selectCity(city) {
+    selectedCity.value = city
+    const r = 0.35
+    map.flyTo([city.lat, city.lon], 10, { duration: 0.7 })
+    await saveAndFetch({ name: city.name, west: city.lon - r, east: city.lon + r, south: city.lat - r, north: city.lat + r })
+}
+
+async function selectGridCell(cell) {
+    selectedCity.value = { name: `Блок ${cell.label}`, ...cell }
+    map.fitBounds([[cell.south, cell.west], [cell.north, cell.east]], { padding: [16, 16] })
+    await saveAndFetch({ name: `Блок ${cell.label}`, ...cell })
+}
+
+function backToOblasts() {
+    selectionLevel.value = 'oblast'
+    selectedCity.value   = null
+    clearDetail()
+    if (selectedOblast.value) {
+        rectLayers[selectedOblast.value.name]?.setStyle(normalStyle())
+        selectedOblast.value = null
+    }
+    hotspots.value = []
+    hotspotLayer.clearLayers()
+    map.flyTo([48.0, 67.0], 5, { duration: 0.8 })
+}
+
 // ── Selection ─────────────────────────────────────────────────────────────────
 function selectOblast(oblast) {
+    clearDetail()
     if (selectedOblast.value) {
         rectLayers[selectedOblast.value.name]?.setStyle(normalStyle())
     }
     selectedOblast.value = oblast
+    selectedCity.value   = null
+    selectionLevel.value = 'detail'
     rectLayers[oblast.name]?.setStyle(activeStyle())
     map.fitBounds(oblastBounds(oblast), { padding: [30, 30] })
+    drawDetail(oblast)
     saveAndFetch(oblast)
 }
 
@@ -360,7 +437,9 @@ const logout = () => router.post('/logout')
                     <span class="afs-logo__text">AgriFireShield</span>
                 </Link>
                 <nav class="afs-nav">
-                    <Link href="/dashboard" class="afs-nav__btn">Главная</Link>
+                    <Link href="/dashboard"  class="afs-nav__btn">Главная</Link>
+                    <Link href="/subsidies" class="afs-nav__btn">Субсидии</Link>
+                    <Link href="/yield"     class="afs-nav__btn">Урожайность</Link>
                     <Link href="/profile"   class="afs-nav__btn">Профиль</Link>
                     <button class="afs-nav__logout" @click="logout">Выйти</button>
                 </nav>
@@ -393,12 +472,22 @@ const logout = () => router.post('/logout')
 
             <!-- Sidebar -->
             <aside class="afs-sidebar">
-                <div class="afs-sidebar__header">
+
+                <!-- Oblast-level header -->
+                <div v-if="selectionLevel === 'oblast'" class="afs-sidebar__header">
                     <span class="afs-sidebar__title">Регионы Казахстана</span>
                     <span v-if="hotspots.length" class="afs-fire-badge">🔥 {{ hotspots.length }}</span>
                 </div>
 
-                <ul class="afs-oblast-list">
+                <!-- Detail-level header -->
+                <div v-else class="afs-sidebar__header afs-sidebar__header--detail">
+                    <button class="afs-back-btn" @click="backToOblasts" title="Назад">←</button>
+                    <span class="afs-sidebar__title afs-sidebar__title--detail">{{ selectedOblast?.name }}</span>
+                    <span v-if="hotspots.length" class="afs-fire-badge">🔥 {{ hotspots.length }}</span>
+                </div>
+
+                <!-- Oblast list -->
+                <ul v-if="selectionLevel === 'oblast'" class="afs-oblast-list">
                     <li
                         v-for="oblast in OBLASTS"
                         :key="oblast.name"
@@ -415,6 +504,25 @@ const logout = () => router.post('/logout')
                         </span>
                     </li>
                 </ul>
+
+                <!-- City list (detail level) -->
+                <ul v-else class="afs-oblast-list">
+                    <li class="afs-detail-hint">Нас. пункты — или выберите блок на карте</li>
+                    <li
+                        v-for="city in (CITIES[selectedOblast?.name] ?? [])"
+                        :key="city.name"
+                        class="afs-oblast-item"
+                        :class="{ 'afs-oblast-item--active': selectedCity?.name === city.name }"
+                        @click="selectCity(city)"
+                    >
+                        <span class="afs-oblast-item__name">📍 {{ city.name }}</span>
+                        <span
+                            v-if="selectedCity?.name === city.name && hotspots.length"
+                            class="afs-oblast-item__count"
+                        >{{ hotspots.length }}</span>
+                    </li>
+                </ul>
+
             </aside>
 
             <!-- Map panel -->
@@ -430,6 +538,8 @@ const logout = () => router.post('/logout')
                 <!-- Summary bar -->
                 <div v-if="selectedOblast && !loading" class="afs-summary-bar">
                     <span class="afs-summary-bar__oblast">{{ selectedOblast.name }}</span>
+                    <span v-if="selectedCity" class="afs-summary-bar__arrow">›</span>
+                    <span v-if="selectedCity" class="afs-summary-bar__city">{{ selectedCity.name }}</span>
                     <span v-if="hotspots.length" class="afs-summary-bar__count">
                         Обнаружено очагов: <strong>{{ hotspots.length }}</strong>
                     </span>
@@ -686,6 +796,32 @@ const logout = () => router.post('/logout')
     letter-spacing: 0.5px;
     text-transform: uppercase;
 }
+.afs-sidebar__header--detail { gap: 8px; }
+.afs-sidebar__title--detail  { flex: 1; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.afs-back-btn {
+    flex-shrink: 0;
+    background: rgba(232, 92, 0, 0.15);
+    border: 1px solid rgba(232, 92, 0, 0.4);
+    color: #e85c00;
+    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.afs-back-btn:hover { background: rgba(232, 92, 0, 0.3); }
+.afs-detail-hint {
+    padding: 8px 18px 4px;
+    color: #555;
+    font-size: 11px;
+    font-style: italic;
+    list-style: none;
+}
 .afs-fire-badge {
     background: #e85c00;
     color: #fff;
@@ -786,6 +922,8 @@ const logout = () => router.post('/logout')
     z-index: 2;
 }
 .afs-summary-bar__oblast { color: #ff8c00; font-weight: 700; font-size: 14px; }
+.afs-summary-bar__arrow  { color: #555; font-size: 14px; }
+.afs-summary-bar__city   { color: #4db8ff; font-weight: 600; font-size: 13px; }
 .afs-summary-bar__count  { color: #e0d6cc; font-size: 13px; }
 .afs-summary-bar__count strong { color: #ff4500; font-size: 15px; }
 .afs-summary-bar__none   { color: #777; font-size: 13px; }

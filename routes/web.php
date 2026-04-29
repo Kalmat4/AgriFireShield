@@ -5,6 +5,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ZoneController;
 use App\Http\Controllers\N8nProxyController;
 use App\Http\Controllers\CropChatController;
+use App\Http\Controllers\SubsidyController;
+use App\Http\Controllers\YieldController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -25,4 +27,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/crop/sessions/{id}',    [CropChatController::class, 'sessionMessages'])->name('crop.session.messages');
     Route::delete('/crop/sessions/{id}', [CropChatController::class, 'deleteSession'])->name('crop.session.delete');
     Route::post('/n8n/crop',             [CropChatController::class, 'chat'])->name('n8n.crop');
+
+    Route::get('/subsidies', [SubsidyController::class, 'index'])->name('subsidies');
+    Route::get('/yield',     [YieldController::class,  'index'])->name('yield');
 });
