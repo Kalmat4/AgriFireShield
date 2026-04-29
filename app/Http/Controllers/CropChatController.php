@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Http;
 
 class CropChatController extends Controller
 {
-    private const CROP_WEBHOOK_URL = 'https://valtmar.app.n8n.cloud/webhook-test/crop-chat';
+    private const CROP_WEBHOOK_URL = 'https://valtmar.app.n8n.cloud/webhook/crop-chat';
 
     public function sessions()
     {
