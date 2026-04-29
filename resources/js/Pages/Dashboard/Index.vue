@@ -384,7 +384,7 @@ const logout = () => router.post('/logout')
                 :class="{ 'afs-tab--active': activeTab === 'crop' }"
                 @click="switchTab('crop')"
             >
-                Анализ урожая
+                ИИ Помощник агроному
             </button>
         </div>
 
@@ -483,10 +483,10 @@ const logout = () => router.post('/logout')
                 <div ref="cropScrollEl" class="afs-crop-messages">
                     <div v-if="cropMessages.length === 0" class="afs-crop-empty">
                         <div class="afs-crop-empty__icon">🌾</div>
-                        <div class="afs-crop-empty__title">Агро-чат</div>
+                        <div class="afs-crop-empty__title">ИИ Помощник агроному</div>
                         <div class="afs-crop-empty__hint">
                             Загрузите фото урожая или задайте вопрос —<br>
-                            AI-агрономист определит состояние и даст рекомендации
+                            ИИ определит состояние и даст рекомендации
                         </div>
                     </div>
 
