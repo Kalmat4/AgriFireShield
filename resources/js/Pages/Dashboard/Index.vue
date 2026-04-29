@@ -46,6 +46,34 @@ const hotspots       = ref([])
 const loading        = ref(false)
 const errorMsg       = ref(null)
 
+const activeTab     = ref('map')
+const agentResult   = ref(null)
+const agentLoading  = ref(false)
+const agentError    = ref(null)
+
+async function callWebhook() {
+    agentLoading.value = true
+    agentError.value   = null
+    agentResult.value  = null
+    try {
+        const { data } = await axios.post('/n8n/analyze', {
+            oblast:    selectedOblast.value ?? null,
+            hotspots:  hotspots.value,
+            timestamp: new Date().toISOString(),
+        })
+        agentResult.value = data
+    } catch {
+        agentError.value = 'Ошибка подключения к сервису анализа.'
+    } finally {
+        agentLoading.value = false
+    }
+}
+
+function switchTab(tab) {
+    activeTab.value = tab
+    if (tab === 'agent') callWebhook()
+}
+
 // ── Leaflet internals (non-reactive) ─────────────────────────────────────────
 let map             = null
 let rectLayers      = {}
@@ -179,6 +207,24 @@ const logout = () => router.post('/logout')
         <!-- Error banner -->
         <div v-if="errorMsg" class="afs-error-banner">{{ errorMsg }}</div>
 
+        <!-- Tabs -->
+        <div class="afs-tabs">
+            <button
+                class="afs-tab"
+                :class="{ 'afs-tab--active': activeTab === 'map' }"
+                @click="switchTab('map')"
+            >
+                Карта пожаров
+            </button>
+            <button
+                class="afs-tab"
+                :class="{ 'afs-tab--active': activeTab === 'agent' }"
+                @click="switchTab('agent')"
+            >
+                AI-анализ (n8n)
+            </button>
+        </div>
+
         <!-- Workspace -->
         <div class="afs-workspace">
 
@@ -209,7 +255,7 @@ const logout = () => router.post('/logout')
             </aside>
 
             <!-- Map panel -->
-            <div class="afs-map-panel">
+            <div v-show="activeTab === 'map'" class="afs-map-panel">
                 <div ref="mapEl" class="afs-map"></div>
 
                 <!-- Loading overlay -->
@@ -232,6 +278,31 @@ const logout = () => router.post('/logout')
                 <!-- Placeholder when nothing selected -->
                 <div v-if="!selectedOblast && !loading" class="afs-map-hint">
                     Выберите регион на карте или в списке слева
+                </div>
+            </div>
+
+            <!-- Agent panel -->
+            <div v-show="activeTab === 'agent'" class="afs-agent-panel">
+                <div v-if="agentLoading" class="afs-agent-loading">
+                    <div class="afs-spinner"></div>
+                    <span>Запрос к n8n агенту...</span>
+                </div>
+
+                <div v-else-if="agentError" class="afs-agent-error">
+                    {{ agentError }}
+                    <button class="afs-agent-retry" @click="callWebhook">Повторить</button>
+                </div>
+
+                <div v-else-if="agentResult" class="afs-agent-result">
+                    <div class="afs-agent-result__header">
+                        <span class="afs-agent-result__title">Ответ AI-агента</span>
+                        <button class="afs-agent-retry" @click="callWebhook">Обновить</button>
+                    </div>
+                    <pre class="afs-agent-result__body">{{ typeof agentResult === 'string' ? agentResult : JSON.stringify(agentResult, null, 2) }}</pre>
+                </div>
+
+                <div v-else class="afs-agent-hint">
+                    Нажмите вкладку «AI-анализ» для запуска агента
                 </div>
             </div>
         </div>
@@ -324,7 +395,7 @@ const logout = () => router.post('/logout')
 /* ── Workspace ────────────────────────────────────────────────────────────── */
 .afs-workspace {
     display: flex;
-    height: calc(100vh - 64px);
+    height: calc(100vh - 64px - 49px);
     overflow: hidden;
 }
 
@@ -457,6 +528,112 @@ const logout = () => router.post('/logout')
 .afs-summary-bar__count  { color: #e0d6cc; font-size: 13px; }
 .afs-summary-bar__count strong { color: #ff4500; font-size: 15px; }
 .afs-summary-bar__none   { color: #777; font-size: 13px; }
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.afs-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 16px;
+    background: #111;
+    border-bottom: 1px solid #2d1a00;
+    flex-shrink: 0;
+}
+.afs-tab {
+    padding: 7px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    background: transparent;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, border-color 0.18s;
+}
+.afs-tab:hover {
+    background: rgba(232, 92, 0, 0.1);
+    color: #e0d6cc;
+    border-color: rgba(232, 92, 0, 0.3);
+}
+.afs-tab--active {
+    background: rgba(232, 92, 0, 0.2);
+    color: #fff;
+    border-color: #e85c00;
+}
+
+/* ── Agent panel ──────────────────────────────────────────────────────────── */
+.afs-agent-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: #141414;
+    overflow-y: auto;
+    padding: 32px 24px;
+    min-width: 0;
+}
+.afs-agent-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-top: 80px;
+    color: #c8bfb5;
+    font-size: 14px;
+}
+.afs-agent-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin-top: 80px;
+    color: #ff8888;
+    font-size: 14px;
+}
+.afs-agent-retry {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: #e85c00;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.18s;
+}
+.afs-agent-retry:hover { opacity: 0.85; }
+.afs-agent-result {
+    width: 100%;
+    max-width: 860px;
+}
+.afs-agent-result__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+.afs-agent-result__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #ff8c00;
+}
+.afs-agent-result__body {
+    background: #1e1e1e;
+    border: 1px solid #2d2d2d;
+    border-radius: 10px;
+    padding: 20px;
+    color: #d4d4d4;
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+}
+.afs-agent-hint {
+    margin-top: 80px;
+    color: #555;
+    font-size: 14px;
+}
 
 /* ── Map hint ─────────────────────────────────────────────────────────────── */
 .afs-map-hint {

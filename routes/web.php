@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ZoneController;
+use App\Http\Controllers\N8nProxyController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login');
@@ -16,4 +17,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::patch('/zone', [ZoneController::class, 'store'])->name('zone.store');
     Route::get('/zone/fires', [ZoneController::class, 'getFires'])->name('zone.fires');
+
+    Route::post('/n8n/analyze', [N8nProxyController::class, 'analyze'])->name('n8n.analyze');
 });
