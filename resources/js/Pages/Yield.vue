@@ -1,6 +1,12 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+import { Chart, registerables } from 'chart.js'
+Chart.register(...registerables)
 
 const props = defineProps({
     national_summary: { type: Array,  default: () => [] },
@@ -8,8 +14,6 @@ const props = defineProps({
     wheat_top3:       { type: Array,  default: () => [] },
     stats:            { type: Object, default: () => ({}) },
 })
-
-const logout = () => router.post('/logout')
 
 function fmtNum(val, decimals = 0) {
     if (val == null) return '—'
@@ -33,28 +37,73 @@ function qualityClass(grade) {
     if (grade === '4') return 'badge badge--orange'
     return 'badge badge--gray'
 }
+
+// ── Wheat chart ───────────────────────────────────────────────────────────────
+const chartEl = ref(null)
+let chartInstance = null
+
+const CHART_YEARS = ['2022', '2023', '2024']
+const CHART_REGIONS = [
+    { name: 'Акмолинская',          color: '#ff6b35' },
+    { name: 'Костанайская',         color: '#4db8ff' },
+    { name: 'Северо-Казахстанская', color: '#4ade80' },
+]
+
+onMounted(() => {
+    const lookup = {}
+    props.wheat_top3.forEach(row => {
+        if (!lookup[row.region_name]) lookup[row.region_name] = {}
+        lookup[row.region_name][String(row.harvest_year)] = row.yield_centner_ha
+    })
+
+    const datasets = CHART_REGIONS.map(r => ({
+        label: r.name,
+        data: CHART_YEARS.map(y => lookup[r.name]?.[y] ?? null),
+        borderColor: r.color,
+        backgroundColor: r.color + '18',
+        tension: 0.35,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        fill: false,
+        spanGaps: true,
+    }))
+
+    chartInstance = new Chart(chartEl.value, {
+        type: 'line',
+        data: { labels: CHART_YEARS, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: '#888', font: { size: 12 }, boxWidth: 16, padding: 20 },
+                },
+                tooltip: { mode: 'index', intersect: false },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#888', font: { size: 12 } },
+                    grid: { color: '#2d2d2d' },
+                },
+                y: {
+                    ticks: { color: '#888', font: { size: 12 } },
+                    grid: { color: '#2d2d2d' },
+                    title: { display: true, text: 'ц/га', color: '#888', font: { size: 12 } },
+                },
+            },
+        },
+    })
+})
+
+onBeforeUnmount(() => {
+    chartInstance?.destroy()
+})
 </script>
 
 <template>
     <AppLayout>
-        <Head title="Урожайность" />
-
-        <!-- Header -->
-        <header class="afs-header">
-            <div class="afs-header__inner">
-                <Link href="/dashboard" class="afs-logo">
-                    <span class="afs-logo__icon">🔥</span>
-                    <span class="afs-logo__text">AgriFireShield</span>
-                </Link>
-                <nav class="afs-nav">
-                    <Link href="/dashboard"  class="afs-nav__btn">Главная</Link>
-                    <Link href="/subsidies"  class="afs-nav__btn">Субсидии</Link>
-                    <Link href="/yield"      class="afs-nav__btn">Урожайность</Link>
-                    <Link href="/profile"    class="afs-nav__btn">Профиль</Link>
-                    <button class="afs-nav__logout" @click="logout">Выйти</button>
-                </nav>
-            </div>
-        </header>
+        <Head title="Урожайность — AgroMind KZ" />
 
         <div class="yld-bg">
         <div class="yld-page">
@@ -80,6 +129,14 @@ function qualityClass(grade) {
                     <div class="yld-card__value">
                         <span class="badge badge--orange">{{ stats.anomalies_count }}</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- Chart: Wheat yield dynamics -->
+            <div class="yld-section">
+                <div class="yld-section__title">Динамика урожайности пшеницы — топ регионы</div>
+                <div class="yld-chart-wrap">
+                    <canvas ref="chartEl" class="yld-chart"></canvas>
                 </div>
             </div>
 
@@ -209,66 +266,6 @@ function qualityClass(grade) {
 </template>
 
 <style scoped>
-/* ── Header ───────────────────────────────────────────────────────────────── */
-.afs-header {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d1a00 100%);
-    border-bottom: 3px solid #e85c00;
-    box-shadow: 0 2px 12px rgba(232, 92, 0, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-.afs-header__inner {
-    max-width: 100%;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.afs-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    user-select: none;
-}
-.afs-logo__icon { font-size: 28px; filter: drop-shadow(0 0 6px rgba(255,120,0,0.8)); }
-.afs-logo__text { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
-.afs-nav { display: flex; align-items: center; gap: 8px; }
-.afs-nav__btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: background 0.18s, color 0.18s;
-}
-.afs-nav__btn:hover,
-.afs-nav__btn.router-link-active {
-    background: rgba(232, 92, 0, 0.18);
-    color: #fff;
-    border-color: rgba(232, 92, 0, 0.4);
-}
-.afs-nav__logout {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s;
-}
-.afs-nav__logout:hover { background: rgba(255,60,0,0.2); color: #fff; border-color: rgba(255,60,0,0.5); }
-
 /* ── Background & page ────────────────────────────────────────────────────── */
 .yld-bg {
     background: #111;
@@ -331,7 +328,7 @@ function qualityClass(grade) {
     color: #e0d6cc;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #2d1a00;
+    border-bottom: 2px solid #0b2014;
 }
 
 /* ── Table ────────────────────────────────────────────────────────────────── */
@@ -386,5 +383,20 @@ function qualityClass(grade) {
     max-width: 280px;
     white-space: normal;
     line-height: 1.4;
+}
+
+/* ── Chart ────────────────────────────────────────────────────────────────── */
+.yld-chart-wrap {
+    background: #1e1e1e;
+    border: 1px solid #2d2d2d;
+    border-radius: 10px;
+    padding: 20px 24px;
+    height: 280px;
+    position: relative;
+}
+
+.yld-chart {
+    width: 100% !important;
+    height: 100% !important;
 }
 </style>

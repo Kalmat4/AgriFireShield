@@ -4,7 +4,8 @@
       "Bash(npm install *)",
       "Bash(php artisan *)",
       "WebFetch(domain:geodata.ucdavis.edu)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(Select-String *)"
     ]
   }
 }

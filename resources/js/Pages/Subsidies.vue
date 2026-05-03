@@ -1,14 +1,15 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
     subsidy_flags: { type: Array, default: () => [] },
     anomalies:     { type: Array, default: () => [] },
     stats:         { type: Object, default: () => ({}) },
 })
-
-const logout = () => router.post('/logout')
 
 function formatBillion(val) {
     if (!val) return '0 млрд ₸'
@@ -33,56 +34,39 @@ function severityClass(severity) {
 }
 
 function anomalyLabel(type) {
-    if (type === 'overreport')     return 'Завышение'
-    if (type === 'subsidy_fraud')  return 'Субсидийный фрод'
+    if (type === 'overreport')    return t('subsidies.overreport')
+    if (type === 'subsidy_fraud') return t('subsidies.fraud_type')
     return type
 }
 </script>
 
 <template>
     <AppLayout>
-        <Head title="Информация о субсидиях" />
-
-        <!-- Header -->
-        <header class="afs-header">
-            <div class="afs-header__inner">
-                <Link href="/dashboard" class="afs-logo">
-                    <span class="afs-logo__icon">🔥</span>
-                    <span class="afs-logo__text">AgriFireShield</span>
-                </Link>
-                <nav class="afs-nav">
-                    <Link href="/dashboard"  class="afs-nav__btn">Главная</Link>
-                    <Link href="/subsidies"  class="afs-nav__btn">Субсидии</Link>
-                    <Link href="/yield"      class="afs-nav__btn">Урожайность</Link>
-                    <Link href="/profile"    class="afs-nav__btn">Профиль</Link>
-                    <button class="afs-nav__logout" @click="logout">Выйти</button>
-                </nav>
-            </div>
-        </header>
+        <Head title="Субсидии — AgroMind KZ" />
 
         <div class="subs-bg">
         <div class="subs-page">
 
-            <div class="subs-page-title">Информация о субсидиях</div>
+            <div class="subs-page-title">{{ t('subsidies.title') }}</div>
 
             <!-- Section 1: Stats cards -->
             <div class="subs-cards">
                 <div class="subs-card">
-                    <div class="subs-card__label">Общий объём субсидий</div>
+                    <div class="subs-card__label">{{ t('subsidies.total') }}</div>
                     <div class="subs-card__value">{{ formatBillion(stats.total_subsidy_kzt) }}</div>
                 </div>
                 <div class="subs-card subs-card--red">
-                    <div class="subs-card__label">Потенциальные потери</div>
+                    <div class="subs-card__label">{{ t('subsidies.losses') }}</div>
                     <div class="subs-card__value subs-card__value--red">{{ formatBillion(stats.total_potential_loss_kzt) }}</div>
                 </div>
                 <div class="subs-card">
-                    <div class="subs-card__label">Критических аномалий</div>
+                    <div class="subs-card__label">{{ t('subsidies.critical') }}</div>
                     <div class="subs-card__value">
                         <span class="badge badge--red">{{ stats.critical_count ?? 0 }}</span>
                     </div>
                 </div>
                 <div class="subs-card">
-                    <div class="subs-card__label">Случаев мошенничества</div>
+                    <div class="subs-card__label">{{ t('subsidies.fraud') }}</div>
                     <div class="subs-card__value">
                         <span class="badge badge--orange">{{ stats.fraud_count ?? 0 }}</span>
                     </div>
@@ -91,20 +75,20 @@ function anomalyLabel(type) {
 
             <!-- Section 2: Subsidy flags table -->
             <div class="subs-section">
-                <div class="subs-section__title">Флаги субсидий</div>
+                <div class="subs-section__title">{{ t('subsidies.flags_title') }}</div>
                 <div class="subs-table-wrap">
                     <table class="subs-table">
                         <thead>
                             <tr>
-                                <th>Регион</th>
-                                <th>Год</th>
-                                <th>Задекл. площадь (га)</th>
-                                <th>Спутн. площадь (га)</th>
-                                <th>Расхождение (га)</th>
-                                <th>Отклонение %</th>
-                                <th>Сумма субсидий</th>
-                                <th>Потенц. потери</th>
-                                <th>Примечания</th>
+                                <th>{{ t('subsidies.col_region') }}</th>
+                                <th>{{ t('subsidies.col_year') }}</th>
+                                <th>{{ t('subsidies.col_declared') }}</th>
+                                <th>{{ t('subsidies.col_satellite') }}</th>
+                                <th>{{ t('subsidies.col_gap') }}</th>
+                                <th>{{ t('subsidies.col_deviation') }}</th>
+                                <th>{{ t('subsidies.col_amount') }}</th>
+                                <th>{{ t('subsidies.col_loss') }}</th>
+                                <th>{{ t('subsidies.col_notes') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -124,7 +108,7 @@ function anomalyLabel(type) {
                                 <td>{{ row.notes ?? '—' }}</td>
                             </tr>
                             <tr v-if="!subsidy_flags.length">
-                                <td colspan="9" class="subs-table__empty">Нет данных</td>
+                                <td colspan="9" class="subs-table__empty">{{ t('subsidies.no_data') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -133,20 +117,20 @@ function anomalyLabel(type) {
 
             <!-- Section 3: Anomalies table -->
             <div class="subs-section">
-                <div class="subs-section__title">Аномалии урожайности</div>
+                <div class="subs-section__title">{{ t('subsidies.anomalies_title') }}</div>
                 <div class="subs-table-wrap">
                     <table class="subs-table">
                         <thead>
                             <tr>
-                                <th>Год</th>
-                                <th>Регион</th>
-                                <th>Культура</th>
-                                <th>Заявл. урожайность</th>
-                                <th>Спутн. урожайность</th>
-                                <th>Отклонение %</th>
-                                <th>Тип</th>
-                                <th>Серьёзность</th>
-                                <th>Описание</th>
+                                <th>{{ t('subsidies.col_year') }}</th>
+                                <th>{{ t('subsidies.col_region') }}</th>
+                                <th>{{ t('subsidies.col_crop') }}</th>
+                                <th>{{ t('subsidies.col_declared_yield') }}</th>
+                                <th>{{ t('subsidies.col_satellite_yield') }}</th>
+                                <th>{{ t('subsidies.col_deviation') }}</th>
+                                <th>{{ t('subsidies.col_type') }}</th>
+                                <th>{{ t('subsidies.col_severity') }}</th>
+                                <th>{{ t('subsidies.col_desc') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -162,7 +146,7 @@ function anomalyLabel(type) {
                                 <td>{{ row.description ?? '—' }}</td>
                             </tr>
                             <tr v-if="!anomalies.length">
-                                <td colspan="9" class="subs-table__empty">Нет активных аномалий</td>
+                                <td colspan="9" class="subs-table__empty">{{ t('subsidies.no_anomalies') }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -175,69 +159,9 @@ function anomalyLabel(type) {
 </template>
 
 <style scoped>
-/* ── Header (reuse Dashboard styles) ─────────────────────────────────────── */
-.afs-header {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d1a00 100%);
-    border-bottom: 3px solid #e85c00;
-    box-shadow: 0 2px 12px rgba(232, 92, 0, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-.afs-header__inner {
-    max-width: 100%;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.afs-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    user-select: none;
-}
-.afs-logo__icon { font-size: 28px; filter: drop-shadow(0 0 6px rgba(255,120,0,0.8)); }
-.afs-logo__text { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
-.afs-nav { display: flex; align-items: center; gap: 8px; }
-.afs-nav__btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: background 0.18s, color 0.18s;
-}
-.afs-nav__btn:hover,
-.afs-nav__btn.router-link-active {
-    background: rgba(232, 92, 0, 0.18);
-    color: #fff;
-    border-color: rgba(232, 92, 0, 0.4);
-}
-.afs-nav__logout {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.2);
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s;
-}
-.afs-nav__logout:hover { background: rgba(255,60,0,0.2); color: #fff; border-color: rgba(255,60,0,0.5); }
-
-/* ── Dark background ──────────────────────────────────────────────────────── */
+/* ── Dark green background ────────────────────────────────────────────────── */
 .subs-bg {
-    background: #111;
+    background: #0d1208;
     min-height: calc(100vh - 64px);
 }
 
@@ -251,9 +175,11 @@ function anomalyLabel(type) {
 .subs-page-title {
     font-size: 22px;
     font-weight: 700;
-    color: #fff;
+    color: #e0d6cc;
     margin-bottom: 24px;
     letter-spacing: 0.3px;
+    border-left: 3px solid #00c853;
+    padding-left: 12px;
 }
 
 /* ── Stat cards ───────────────────────────────────────────────────────────── */
@@ -264,18 +190,25 @@ function anomalyLabel(type) {
     margin-bottom: 32px;
 }
 .subs-card {
-    background: #1e1e1e;
-    border: 1px solid #2d2d2d;
+    background: #111c14;
+    border: 1px solid rgba(0, 180, 80, 0.2);
     border-radius: 12px;
     padding: 20px 22px;
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
-.subs-card--red { border-color: rgba(220, 38, 38, 0.4); background: #1e1212; }
-.subs-card__label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-.subs-card__value { font-size: 24px; font-weight: 700; color: #fff; }
-.subs-card__value--red { color: #f87171; }
+.subs-card--red {
+    border-color: rgba(0, 230, 118, 0.55);
+    background: #0a1f0e;
+    box-shadow: 0 0 20px rgba(0, 230, 118, 0.12), 0 0 40px rgba(0, 230, 118, 0.05);
+}
+.subs-card__label { font-size: 12px; font-weight: 600; color: #6aaa80; text-transform: uppercase; letter-spacing: 0.5px; }
+.subs-card__value { font-size: 24px; font-weight: 700; color: #00e676; }
+.subs-card__value--red {
+    color: #00e676;
+    text-shadow: 0 0 14px rgba(0, 230, 118, 0.6);
+}
 
 /* ── Badges ───────────────────────────────────────────────────────────────── */
 .badge {
@@ -294,17 +227,17 @@ function anomalyLabel(type) {
 .subs-section__title {
     font-size: 16px;
     font-weight: 700;
-    color: #e0d6cc;
+    color: #a0d6b0;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 2px solid #2d1a00;
+    border-bottom: 2px solid #0b2014;
 }
 
 /* ── Table ────────────────────────────────────────────────────────────────── */
 .subs-table-wrap {
     overflow-x: auto;
     border-radius: 10px;
-    border: 1px solid #2d2d2d;
+    border: 1px solid rgba(0, 180, 80, 0.18);
 }
 .subs-table {
     width: 100%;
@@ -312,25 +245,25 @@ function anomalyLabel(type) {
     font-size: 13px;
 }
 .subs-table thead tr {
-    background: #1a1a1a;
+    background: #0b1a10;
 }
 .subs-table th {
     padding: 11px 14px;
     text-align: left;
-    color: #888;
+    color: #6aaa80;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
     white-space: nowrap;
-    border-bottom: 1px solid #2d2d2d;
+    border-bottom: 1px solid #1a3020;
 }
 .subs-table tbody tr {
-    background: #161616;
-    border-bottom: 1px solid #222;
+    background: #0f1610;
+    border-bottom: 1px solid #1a2618;
     transition: background 0.12s;
 }
-.subs-table tbody tr:hover { background: #1e1e1e; }
+.subs-table tbody tr:hover { background: #1e2a20; }
 .subs-table td {
     padding: 10px 14px;
     color: #c8bfb5;

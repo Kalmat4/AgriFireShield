@@ -1,8 +1,13 @@
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import axios from 'axios'
+import MarkdownIt from 'markdown-it'
+import { useI18n } from 'vue-i18n'
+
+const md = new MarkdownIt({ breaks: true, linkify: true })
+const { t } = useI18n()
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 
@@ -50,9 +55,6 @@ const selectedOblast = ref(null)
 const hotspots = ref([])
 const loading = ref(false)
 const errorMsg = ref(null)
-const demoFireOblast = ref(null)
-const demoNotifying = ref(false)
-
 const activeTab = ref('map')
 
 function switchTab(tab) {
@@ -183,7 +185,7 @@ async function sendCrop() {
 
         cropMessages.value.push({ role: 'ai', text: data.response ?? data, preview: null })
     } catch {
-        cropMessages.value.push({ role: 'ai', text: 'Ошибка подключения к сервису анализа. Попробуйте снова.', preview: null })
+        cropMessages.value.push({ role: 'ai', text: t('home.chat_error'), preview: null })
     } finally {
         cropLoading.value = false
         await nextTick()
@@ -275,8 +277,8 @@ let hotspotLayer = null
 let cityMarkerLayer = null
 
 // ── Styles ───────────────────────────────────────────────────────────────────
-const normalStyle = () => ({ color: '#e85c00', weight: 1.5, fillColor: '#e85c00', fillOpacity: 0.08 })
-const activeStyle = () => ({ color: '#ff4500', weight: 2.5, fillColor: '#ff4500', fillOpacity: 0.22 })
+const normalStyle = () => ({ color: '#00e676', weight: 1.5, fillColor: '#00e676', fillOpacity: 0.07 })
+const activeStyle = () => ({ color: '#00e676', weight: 2.5, fillColor: '#00e676', fillOpacity: 0.20 })
 // ДОБАВИТЬ:
 const fireStyle = () => ({ color: '#cc0000', weight: 2, fillColor: '#ff2200', fillOpacity: 0.35 })
 const fireActiveStyle = () => ({ color: '#cc0000', weight: 3, fillColor: '#ff2200', fillOpacity: 0.50 })
@@ -353,55 +355,6 @@ function backToOblasts() {
     hotspots.value = []
     hotspotLayer.clearLayers()
     map.flyTo([48.0, 67.0], 5, { duration: 0.8 })
-}
-function toggleDemoFire() {
-    const name = selectedOblast.value?.name
-    if (!name) return
-
-    if (demoFireOblast.value === name) {
-        // Выключаем демо
-        demoFireOblast.value = null
-        rectLayers[name]?.setStyle(activeStyle())
-        hotspotLayer.clearLayers()
-        hotspots.value = []
-    } else {
-        // Включаем демо — рисуем фейковые очаги
-        demoFireOblast.value = name
-        const oblast = OBLASTS.find(o => o.name === name)
-        rectLayers[name]?.setStyle(fireActiveStyle())
-
-        const fakeSpots = generateFakeHotspots(oblast)
-        hotspots.value = fakeSpots
-        renderHotspots(fakeSpots)
-    }
-}
-
-async function sendDemoNotify(type) {
-    if (!selectedOblast.value || demoNotifying.value) return
-    demoNotifying.value = true
-    try {
-        await axios.post('/demo/notify', { type, oblast: selectedOblast.value.name })
-    } finally {
-        demoNotifying.value = false
-    }
-}
-
-function generateFakeHotspots(oblast) {
-    const count = 5 + Math.floor(Math.random() * 8) // 5–12 очагов
-    const spots = []
-    for (let i = 0; i < count; i++) {
-        const lat = oblast.south + Math.random() * (oblast.north - oblast.south)
-        const lon = oblast.west + Math.random() * (oblast.east - oblast.west)
-        spots.push({
-            lat,
-            lon,
-            brightness: (330 + Math.random() * 80).toFixed(1),
-            frp: (10 + Math.random() * 120).toFixed(1),
-            confidence: ['nominal', 'high'][Math.floor(Math.random() * 2)],
-            daynight: Math.random() > 0.5 ? 'D' : 'N',
-        })
-    }
-    return spots
 }
 // ── Selection ─────────────────────────────────────────────────────────────────
 function selectOblast(oblast) {
@@ -511,33 +464,80 @@ function renderHotspots(spots) {
     }
 }
 
+// ── Region Eco Stub Data ──────────────────────────────────────────────────────
+const REGION_ECO = {
+    'Костанайская':          { degradation: 3.2, water: 'высокий',     co2: 45 },
+    'Акмолинская':           { degradation: 2.8, water: 'средний',     co2: 38 },
+    'Павлодарская':          { degradation: 4.1, water: 'высокий',     co2: 52 },
+    'Карагандинская':        { degradation: 3.7, water: 'критический', co2: 61 },
+    'Северо-Казахстанская':  { degradation: 2.1, water: 'низкий',      co2: 28 },
+    'Западно-Казахстанская': { degradation: 3.9, water: 'высокий',     co2: 44 },
+    'Атырауская':            { degradation: 4.5, water: 'критический', co2: 38 },
+    'Мангыстауская':         { degradation: 4.8, water: 'критический', co2: 29 },
+    'Актюбинская':           { degradation: 3.4, water: 'высокий',     co2: 41 },
+    'Жамбылская':            { degradation: 3.1, water: 'средний',     co2: 33 },
+    'Туркестанская':         { degradation: 3.6, water: 'высокий',     co2: 37 },
+    'Алматинская':           { degradation: 2.9, water: 'средний',     co2: 31 },
+    'Кызылординская':        { degradation: 4.3, water: 'критический', co2: 48 },
+    'Восточно-Казахстанская':{ degradation: 2.4, water: 'низкий',      co2: 22 },
+    'г. Алматы':             { degradation: 1.8, water: 'низкий',      co2: 15 },
+    'г. Астана':             { degradation: 1.5, water: 'низкий',      co2: 12 },
+    'Улытауская':            { degradation: 3.8, water: 'высокий',     co2: 43 },
+}
+
+const regionEco = computed(() =>
+    selectedOblast.value
+        ? (REGION_ECO[selectedOblast.value.name] ?? { degradation: 3.0, water: 'средний', co2: 35 })
+        : { degradation: 3.0, water: 'средний', co2: 35 }
+)
+
+function openAiWithContext() {
+    switchTab('crop')
+    cropInput.value = `Расскажи про экологическую ситуацию и пожарные риски в ${selectedOblast.value.name}`
+    nextTick(() => scrollCropToBottom())
+}
+
+function formatHotspotTime(t) {
+    if (!t) return '—'
+    const s = String(t).padStart(4, '0')
+    return s.slice(0, 2) + ':' + s.slice(2)
+}
+
+function degradationClass(v) {
+    if (v > 4)    return 'afs-rp__val--red'
+    if (v > 3)    return 'afs-rp__val--orange'
+    if (v <= 2.5) return 'afs-rp__val--green'
+    return ''
+}
+
+function waterBadgeClass(w) {
+    if (w === 'критический') return 'afs-rp-badge afs-rp-badge--red'
+    if (w === 'высокий')     return 'afs-rp-badge afs-rp-badge--orange'
+    if (w === 'средний')     return 'afs-rp-badge afs-rp-badge--yellow'
+    return 'afs-rp-badge afs-rp-badge--green'
+}
+
+function fireBadgeClass(count) {
+    if (count >= 10) return 'afs-rp-badge afs-rp-badge--red'
+    if (count >= 4)  return 'afs-rp-badge afs-rp-badge--orange'
+    return 'afs-rp-badge afs-rp-badge--yellow'
+}
+
+function fireRiskLabel(count) {
+    if (count >= 10) return t('home.risk_critical')
+    if (count >= 4)  return t('home.risk_high')
+    return t('home.risk_moderate')
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 onBeforeUnmount(() => { map?.remove(); closeCamera() })
 
-const logout = () => router.post('/logout')
 </script>
 
 <template>
     <AppLayout>
 
-        <Head title="AgriFireShield" />
-
-        <!-- Header -->
-        <header class="afs-header">
-            <div class="afs-header__inner">
-                <Link href="/dashboard" class="afs-logo">
-                    <span class="afs-logo__icon">🔥</span>
-                    <span class="afs-logo__text">AgriFireShield</span>
-                </Link>
-                <nav class="afs-nav">
-                    <Link href="/dashboard" class="afs-nav__btn">Главная</Link>
-                    <Link href="/subsidies" class="afs-nav__btn">Субсидии</Link>
-                    <Link href="/yield" class="afs-nav__btn">Урожайность</Link>
-                    <Link href="/profile" class="afs-nav__btn">Профиль</Link>
-                    <button class="afs-nav__logout" @click="logout">Выйти</button>
-                </nav>
-            </div>
-        </header>
+        <Head title="Главная — AgroMind KZ" />
 
         <!-- Error banner -->
         <div v-if="errorMsg" class="afs-error-banner">{{ errorMsg }}</div>
@@ -622,28 +622,84 @@ const logout = () => router.post('/logout')
                     <span v-else class="afs-summary-bar__none">
                         Активных пожаров не обнаружено
                     </span>
-                    <!-- DEMO кнопки -->
-                    <div v-if="selectedOblast && !loading" class="afs-demo-group">
-                        <span class="afs-demo-label">ДЕМО</span>
-                        <button class="afs-demo-btn"
-                            :class="{ 'afs-demo-btn--active': demoFireOblast === selectedOblast?.name }"
-                            @click="toggleDemoFire">
-                            {{ demoFireOblast === selectedOblast?.name ? '✕ Сбросить' : '🔥 Показать пожар' }}
-                        </button>
-                        <button class="afs-demo-btn afs-demo-btn--safe" :disabled="demoNotifying"
-                            @click="sendDemoNotify('no_fire')">
-                            ✅ Уведомить: нет пожаров
-                        </button>
-                        <button class="afs-demo-btn afs-demo-btn--fire" :disabled="demoNotifying"
-                            @click="sendDemoNotify('fire')">
-                            🔥 Уведомить: пожар!
-                        </button>
-                    </div>
                 </div>
 
                 <!-- Placeholder when nothing selected -->
                 <div v-if="!selectedOblast && !loading" class="afs-map-hint">
                     Выберите регион на карте или в списке слева
+                </div>
+
+                <!-- Region info panel -->
+                <div v-if="selectedOblast && !loading" class="afs-region-panel">
+
+                    <div class="afs-rp__header">
+                        <span class="afs-rp__title">🌿 {{ selectedOblast.name.toUpperCase() }}</span>
+                        <button class="afs-rp__close" @click="backToOblasts" title="Закрыть">×</button>
+                    </div>
+
+                    <!-- Fire status -->
+                    <div class="afs-rp__section">
+                        <div v-if="hotspots.length === 0" class="afs-rp__fire-block">
+                            <span class="afs-rp-badge afs-rp-badge--green">✅ Активных пожаров нет</span>
+                            <p class="afs-rp__update-text">
+                                Последнее обновление: сегодня, 4 раза в сутки (NASA FIRMS)
+                            </p>
+                        </div>
+                        <div v-else class="afs-rp__fire-block">
+                            <span class="afs-rp-badge afs-rp-badge--red">🔥 Обнаружено очагов: {{ hotspots.length }}</span>
+                            <span :class="fireBadgeClass(hotspots.length)">{{ fireRiskLabel(hotspots.length) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Eco metrics -->
+                    <div class="afs-rp__section">
+                        <div class="afs-rp__section-title">Экология региона</div>
+                        <div class="afs-rp__eco-row">
+                            <div class="afs-rp__eco-card">
+                                <div class="afs-rp__eco-label">🌱 Деградация</div>
+                                <div class="afs-rp__eco-value" :class="degradationClass(regionEco.degradation)">
+                                    {{ regionEco.degradation }}
+                                </div>
+                            </div>
+                            <div class="afs-rp__eco-card">
+                                <div class="afs-rp__eco-label">💧 Вод. стресс</div>
+                                <span :class="waterBadgeClass(regionEco.water)">{{ regionEco.water }}</span>
+                            </div>
+                            <div class="afs-rp__eco-card">
+                                <div class="afs-rp__eco-label">☁️ CO₂</div>
+                                <div class="afs-rp__eco-value">{{ regionEco.co2 }} Кт</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Last hotspots table -->
+                    <div v-if="hotspots.length > 0" class="afs-rp__section">
+                        <div class="afs-rp__section-title">Последние очаги</div>
+                        <table class="afs-rp__table">
+                            <thead>
+                                <tr>
+                                    <th>Время</th>
+                                    <th>Яркость</th>
+                                    <th>FRP</th>
+                                    <th>Спутник</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(h, i) in hotspots.slice(0, 3)" :key="i">
+                                    <td>{{ formatHotspotTime(h.acq_time) }}</td>
+                                    <td>{{ h.brightness }} K</td>
+                                    <td>{{ h.frp }} МВт</td>
+                                    <td>{{ h.satellite }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- AI button -->
+                    <button class="afs-rp__ai-btn" @click="openAiWithContext">
+                        Спросить ИИ-агронома →
+                    </button>
+
                 </div>
             </div>
 
@@ -697,7 +753,8 @@ const logout = () => router.post('/logout')
                             </div>
                             <div class="afs-msg__bubble">
                                 <img v-if="msg.preview" :src="msg.preview" class="afs-msg__image" alt="crop photo" />
-                                <span v-if="msg.text" class="afs-msg__text">{{ msg.text }}</span>
+                                <span v-if="msg.text && msg.role === 'user'" class="afs-msg__text">{{ msg.text }}</span>
+                                <div v-if="msg.text && msg.role === 'ai'" class="afs-msg__text ai-message-content" v-html="md.render(msg.text)"></div>
                             </div>
                         </div>
 
@@ -762,14 +819,14 @@ const logout = () => router.post('/logout')
 </template>
 
 <style scoped>
-/* Пункт списка с активным пожаром */
+/* ── Fire semantic — keep red, these represent real data ─────────────────── */
 .afs-oblast-item--fire {
-    background: rgba(255, 34, 0, 0.08);
-    border-left: 2px solid #cc0000;
+    background: rgba(220, 38, 38, 0.06);
+    border-left: 2px solid #dc2626;
 }
 
 .afs-oblast-item--fire:hover {
-    background: rgba(255, 34, 0, 0.15);
+    background: rgba(220, 38, 38, 0.11);
 }
 
 .afs-fire-dot {
@@ -777,96 +834,11 @@ const logout = () => router.post('/logout')
     margin-left: 4px;
 }
 
-/* ── Header ──────────────────────────────────────────────────────────────── */
-.afs-header {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d1a00 100%);
-    border-bottom: 3px solid #e85c00;
-    box-shadow: 0 2px 12px rgba(232, 92, 0, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-}
-
-.afs-header__inner {
-    max-width: 100%;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.afs-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    user-select: none;
-}
-
-.afs-logo__icon {
-    font-size: 28px;
-    filter: drop-shadow(0 0 6px rgba(255, 120, 0, 0.8));
-}
-
-.afs-logo__text {
-    font-size: 20px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.5px;
-}
-
-.afs-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.afs-nav__btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    text-decoration: none;
-    border: 1px solid transparent;
-    transition: background 0.18s, color 0.18s;
-}
-
-.afs-nav__btn:hover,
-.afs-nav__btn.router-link-active {
-    background: rgba(232, 92, 0, 0.18);
-    color: #fff;
-    border-color: rgba(232, 92, 0, 0.4);
-}
-
-.afs-nav__logout {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s;
-}
-
-.afs-nav__logout:hover {
-    background: rgba(255, 60, 0, 0.2);
-    color: #fff;
-    border-color: rgba(255, 60, 0, 0.5);
-}
-
 /* ── Error banner ─────────────────────────────────────────────────────────── */
 .afs-error-banner {
-    background: #3d0a00;
-    border-bottom: 2px solid #cc2200;
-    color: #ff8888;
+    background: #1e0a0a;
+    border-bottom: 2px solid #7f1d1d;
+    color: #fca5a5;
     padding: 10px 20px;
     font-size: 13px;
     font-weight: 500;
@@ -884,7 +856,7 @@ const logout = () => router.post('/logout')
     width: 260px;
     min-width: 220px;
     background: #1a1a1a;
-    border-right: 2px solid #2d1a00;
+    border-right: 2px solid #2d2d2d;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -892,8 +864,8 @@ const logout = () => router.post('/logout')
 
 .afs-sidebar__header {
     padding: 14px 18px;
-    background: #2d1a00;
-    border-bottom: 1px solid #3d2400;
+    background: #161616;
+    border-bottom: 1px solid #2d2d2d;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -901,7 +873,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-sidebar__title {
-    color: #fff;
+    color: #e0d6cc;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -922,9 +894,9 @@ const logout = () => router.post('/logout')
 
 .afs-back-btn {
     flex-shrink: 0;
-    background: rgba(232, 92, 0, 0.15);
-    border: 1px solid rgba(232, 92, 0, 0.4);
-    color: #e85c00;
+    background: rgba(0, 180, 80, 0.12);
+    border: 1px solid rgba(0, 180, 80, 0.35);
+    color: #00e676;
     border-radius: 6px;
     width: 26px;
     height: 26px;
@@ -938,7 +910,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-back-btn:hover {
-    background: rgba(232, 92, 0, 0.3);
+    background: rgba(0, 180, 80, 0.22);
 }
 
 .afs-detail-hint {
@@ -950,7 +922,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-fire-badge {
-    background: #e85c00;
+    background: #dc2626;
     color: #fff;
     font-size: 12px;
     font-weight: 700;
@@ -964,6 +936,7 @@ const logout = () => router.post('/logout')
     margin: 0;
     overflow-y: auto;
     flex: 1;
+    background: #1a1a1a;
 }
 
 .afs-oblast-list::-webkit-scrollbar {
@@ -971,11 +944,11 @@ const logout = () => router.post('/logout')
 }
 
 .afs-oblast-list::-webkit-scrollbar-track {
-    background: #111;
+    background: #1a1a1a;
 }
 
 .afs-oblast-list::-webkit-scrollbar-thumb {
-    background: #3d2400;
+    background: #555;
     border-radius: 2px;
 }
 
@@ -990,13 +963,13 @@ const logout = () => router.post('/logout')
 }
 
 .afs-oblast-item:hover {
-    background: rgba(232, 92, 0, 0.12);
-    border-left-color: rgba(232, 92, 0, 0.5);
+    background: #161616;
+    border-left-color: #00e676;
 }
 
 .afs-oblast-item--active {
-    background: rgba(232, 92, 0, 0.2);
-    border-left-color: #e85c00;
+    background: #1e2a20;
+    border-left-color: #00c853;
 }
 
 .afs-oblast-item__name {
@@ -1006,11 +979,12 @@ const logout = () => router.post('/logout')
 }
 
 .afs-oblast-item--active .afs-oblast-item__name {
-    color: #fff;
+    color: #00e676;
+    font-weight: 600;
 }
 
 .afs-oblast-item__count {
-    background: #cc2200;
+    background: #dc2626;
     color: #fff;
     font-size: 11px;
     font-weight: 700;
@@ -1037,36 +1011,34 @@ const logout = () => router.post('/logout')
 .afs-map-loading {
     position: absolute;
     inset: 0;
-    background: rgba(26, 26, 26, 0.6);
+    background: rgba(0, 0, 0, 0.65);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 12px;
     z-index: 500;
-    color: #fff;
+    color: #e0d6cc;
     font-size: 14px;
 }
 
 .afs-spinner {
     width: 36px;
     height: 36px;
-    border: 3px solid rgba(232, 92, 0, 0.3);
-    border-top-color: #e85c00;
+    border: 3px solid rgba(0, 180, 80, 0.25);
+    border-top-color: #00c853;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
 /* ── Summary bar ──────────────────────────────────────────────────────────── */
 .afs-summary-bar {
-    background: #2d1a00;
-    border-top: 2px solid #e85c00;
+    background: #161616;
+    border-top: 2px solid #00c853;
     padding: 12px 20px;
     display: flex;
     align-items: center;
@@ -1076,7 +1048,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-summary-bar__oblast {
-    color: #ff8c00;
+    color: #00e676;
     font-weight: 700;
     font-size: 14px;
 }
@@ -1087,23 +1059,23 @@ const logout = () => router.post('/logout')
 }
 
 .afs-summary-bar__city {
-    color: #4db8ff;
+    color: #60a5fa;
     font-weight: 600;
     font-size: 13px;
 }
 
 .afs-summary-bar__count {
-    color: #e0d6cc;
+    color: #c8bfb5;
     font-size: 13px;
 }
 
 .afs-summary-bar__count strong {
-    color: #ff4500;
+    color: #dc2626;
     font-size: 15px;
 }
 
 .afs-summary-bar__none {
-    color: #777;
+    color: #555;
     font-size: 13px;
 }
 
@@ -1112,8 +1084,8 @@ const logout = () => router.post('/logout')
     display: flex;
     gap: 4px;
     padding: 8px 16px;
-    background: #111;
-    border-bottom: 1px solid #2d1a00;
+    background: #161616;
+    border-bottom: 1px solid #2d2d2d;
     flex-shrink: 0;
 }
 
@@ -1130,15 +1102,16 @@ const logout = () => router.post('/logout')
 }
 
 .afs-tab:hover {
-    background: rgba(232, 92, 0, 0.1);
+    background: #1e2a20;
     color: #e0d6cc;
-    border-color: rgba(232, 92, 0, 0.3);
+    border-color: #555;
 }
 
 .afs-tab--active {
-    background: rgba(232, 92, 0, 0.2);
-    color: #fff;
-    border-color: #e85c00;
+    background: #1e2a20;
+    color: #00e676;
+    border-color: #00c853;
+    font-weight: 700;
 }
 
 /* ── Map hint ─────────────────────────────────────────────────────────────── */
@@ -1147,12 +1120,13 @@ const logout = () => router.post('/logout')
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(26, 26, 26, 0.82);
+    background: rgba(20, 20, 20, 0.92);
     color: #c8bfb5;
     font-size: 13px;
     padding: 10px 20px;
     border-radius: 20px;
-    border: 1px solid #3d2400;
+    border: 1px solid #2d2d2d;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     pointer-events: none;
     z-index: 10;
     white-space: nowrap;
@@ -1163,7 +1137,7 @@ const logout = () => router.post('/logout')
     flex: 1;
     display: flex;
     flex-direction: row;
-    background: #141414;
+    background: #161616;
     min-width: 0;
     overflow: hidden;
 }
@@ -1173,8 +1147,8 @@ const logout = () => router.post('/logout')
     width: 220px;
     min-width: 180px;
     flex-shrink: 0;
-    background: #141414;
-    border-right: 1px solid #2d1a00;
+    background: #161616;
+    border-right: 1px solid #2d2d2d;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1185,8 +1159,8 @@ const logout = () => router.post('/logout')
     align-items: center;
     justify-content: space-between;
     padding: 12px 14px;
-    background: #1a1a1a;
-    border-bottom: 1px solid #2d1a00;
+    background: #161616;
+    border-bottom: 1px solid #2d2d2d;
     flex-shrink: 0;
 }
 
@@ -1202,7 +1176,7 @@ const logout = () => router.post('/logout')
     width: 26px;
     height: 26px;
     border-radius: 6px;
-    background: #e85c00;
+    background: #00c853;
     border: none;
     color: #fff;
     font-size: 18px;
@@ -1211,11 +1185,11 @@ const logout = () => router.post('/logout')
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.15s;
+    transition: background 0.15s;
 }
 
 .afs-sessions-new:hover {
-    opacity: 0.85;
+    background: #00a844;
 }
 
 .afs-sessions-list {
@@ -1229,11 +1203,11 @@ const logout = () => router.post('/logout')
 }
 
 .afs-sessions-list::-webkit-scrollbar-track {
-    background: #111;
+    background: #1a1a1a;
 }
 
 .afs-sessions-list::-webkit-scrollbar-thumb {
-    background: #3d2400;
+    background: #555;
     border-radius: 2px;
 }
 
@@ -1245,7 +1219,7 @@ const logout = () => router.post('/logout')
 
 .afs-sessions-empty {
     padding: 20px 14px;
-    color: #444;
+    color: #555;
     font-size: 12px;
     text-align: center;
 }
@@ -1261,13 +1235,13 @@ const logout = () => router.post('/logout')
 }
 
 .afs-session-item:hover {
-    background: rgba(232, 92, 0, 0.08);
-    border-left-color: rgba(232, 92, 0, 0.4);
+    background: #1e2a20;
+    border-left-color: #00e676;
 }
 
 .afs-session-item--active {
-    background: rgba(232, 92, 0, 0.15);
-    border-left-color: #e85c00;
+    background: #1e2a20;
+    border-left-color: #00c853;
 }
 
 .afs-session-item__body {
@@ -1289,7 +1263,8 @@ const logout = () => router.post('/logout')
 }
 
 .afs-session-item--active .afs-session-item__title {
-    color: #fff;
+    color: #00e676;
+    font-weight: 600;
 }
 
 .afs-session-item__date {
@@ -1301,7 +1276,7 @@ const logout = () => router.post('/logout')
     flex-shrink: 0;
     background: transparent;
     border: none;
-    color: #444;
+    color: #555;
     font-size: 11px;
     cursor: pointer;
     padding: 2px 4px;
@@ -1315,8 +1290,8 @@ const logout = () => router.post('/logout')
 }
 
 .afs-session-item__del:hover {
-    color: #ff8888;
-    background: rgba(200, 0, 0, 0.15);
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
 }
 
 /* ── Crop main area ──────────────────────────────────────────────────────── */
@@ -1326,6 +1301,7 @@ const logout = () => router.post('/logout')
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #1a1a1a;
 }
 
 .afs-crop-messages {
@@ -1335,6 +1311,7 @@ const logout = () => router.post('/logout')
     display: flex;
     flex-direction: column;
     gap: 16px;
+    background: #1a1a1a;
 }
 
 .afs-crop-messages::-webkit-scrollbar {
@@ -1342,11 +1319,11 @@ const logout = () => router.post('/logout')
 }
 
 .afs-crop-messages::-webkit-scrollbar-track {
-    background: #111;
+    background: #161616;
 }
 
 .afs-crop-messages::-webkit-scrollbar-thumb {
-    background: #3d2400;
+    background: #555;
     border-radius: 3px;
 }
 
@@ -1357,7 +1334,6 @@ const logout = () => router.post('/logout')
     align-items: center;
     justify-content: center;
     gap: 10px;
-    color: #555;
     text-align: center;
     padding: 60px 20px;
 }
@@ -1370,7 +1346,7 @@ const logout = () => router.post('/logout')
 .afs-crop-empty__title {
     font-size: 18px;
     font-weight: 700;
-    color: #888;
+    color: #c8bfb5;
 }
 
 .afs-crop-empty__hint {
@@ -1401,8 +1377,8 @@ const logout = () => router.post('/logout')
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: #2d1a00;
-    border: 1px solid #3d2400;
+    background: #1e2a20;
+    border: 1px solid #555;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1410,7 +1386,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-msg__bubble {
-    background: #1e1e1e;
+    background: #1a1a1a;
     border: 1px solid #2d2d2d;
     border-radius: 14px;
     padding: 12px 16px;
@@ -1421,8 +1397,8 @@ const logout = () => router.post('/logout')
 }
 
 .afs-msg--user .afs-msg__bubble {
-    background: #2d1a00;
-    border-color: #e85c00;
+    background: #1e2a20;
+    border-color: #00c853;
     border-radius: 14px 4px 14px 14px;
 }
 
@@ -1435,11 +1411,11 @@ const logout = () => router.post('/logout')
     max-height: 240px;
     object-fit: contain;
     border-radius: 8px;
-    border: 1px solid #3d3d3d;
+    border: 1px solid #2d2d2d;
 }
 
 .afs-msg__text {
-    color: #d4d4d4;
+    color: #e0d6cc;
     font-size: 13.5px;
     line-height: 1.65;
     white-space: pre-wrap;
@@ -1447,7 +1423,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-msg--user .afs-msg__text {
-    color: #ffe0c0;
+    color: #c8e6cc;
 }
 
 /* Typing animation */
@@ -1463,31 +1439,16 @@ const logout = () => router.post('/logout')
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #e85c00;
+    background: #00c853;
     animation: typing-bounce 1.2s infinite ease-in-out;
 }
 
-.afs-typing-dot:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.afs-typing-dot:nth-child(3) {
-    animation-delay: 0.4s;
-}
+.afs-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.afs-typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typing-bounce {
-
-    0%,
-    80%,
-    100% {
-        transform: scale(0.7);
-        opacity: 0.5;
-    }
-
-    40% {
-        transform: scale(1.1);
-        opacity: 1;
-    }
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+    40%           { transform: scale(1.1); opacity: 1; }
 }
 
 /* ── Image preview bar ───────────────────────────────────────────────────── */
@@ -1496,7 +1457,7 @@ const logout = () => router.post('/logout')
     align-items: center;
     gap: 10px;
     padding: 8px 20px;
-    background: #1a1a1a;
+    background: #161616;
     border-top: 1px solid #2d2d2d;
     flex-shrink: 0;
 }
@@ -1505,14 +1466,14 @@ const logout = () => router.post('/logout')
     height: 60px;
     width: auto;
     border-radius: 6px;
-    border: 1px solid #3d2400;
+    border: 1px solid #555;
     object-fit: cover;
 }
 
 .afs-crop-preview-remove {
-    background: #3d0a00;
-    color: #ff8888;
-    border: 1px solid #cc2200;
+    background: #1e0a0a;
+    color: #dc2626;
+    border: 1px solid #7f1d1d;
     border-radius: 6px;
     width: 28px;
     height: 28px;
@@ -1525,7 +1486,7 @@ const logout = () => router.post('/logout')
 }
 
 .afs-crop-preview-remove:hover {
-    background: #6d1000;
+    background: #2a1010;
 }
 
 /* ── Input row ───────────────────────────────────────────────────────────── */
@@ -1534,8 +1495,8 @@ const logout = () => router.post('/logout')
     align-items: flex-end;
     gap: 10px;
     padding: 14px 20px;
-    background: #1a1a1a;
-    border-top: 2px solid #2d1a00;
+    background: #161616;
+    border-top: 2px solid #2d2d2d;
     flex-shrink: 0;
 }
 
@@ -1548,8 +1509,8 @@ const logout = () => router.post('/logout')
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: #2d1a00;
-    border: 1px solid #3d2400;
+    background: #1e2a20;
+    border: 1px solid #555;
     color: #c8bfb5;
     font-size: 18px;
     cursor: pointer;
@@ -1560,14 +1521,14 @@ const logout = () => router.post('/logout')
 }
 
 .afs-crop-attach-btn:hover {
-    background: rgba(232, 92, 0, 0.2);
-    border-color: #e85c00;
+    background: #1e2a20;
+    border-color: #00c853;
 }
 
 .afs-crop-textarea {
     flex: 1;
-    background: #222;
-    border: 1px solid #333;
+    background: #1a1a1a;
+    border: 1.5px solid #2d2d2d;
     border-radius: 10px;
     color: #e0d6cc;
     font-size: 13.5px;
@@ -1578,11 +1539,12 @@ const logout = () => router.post('/logout')
     overflow-y: auto;
     outline: none;
     font-family: inherit;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .afs-crop-textarea:focus {
-    border-color: #e85c00;
+    border-color: #00c853;
+    box-shadow: 0 0 0 3px rgba(0, 180, 80, 0.12);
 }
 
 .afs-crop-textarea::placeholder {
@@ -1592,7 +1554,7 @@ const logout = () => router.post('/logout')
 .afs-crop-send-btn {
     flex-shrink: 0;
     padding: 10px 22px;
-    background: #e85c00;
+    background: #00e676;
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -1625,7 +1587,7 @@ const logout = () => router.post('/logout')
 
 .afs-camera-modal {
     background: #1a1a1a;
-    border: 2px solid #e85c00;
+    border: 2px solid #00e676;
     border-radius: 16px;
     overflow: hidden;
     display: flex;
@@ -1639,8 +1601,8 @@ const logout = () => router.post('/logout')
     align-items: center;
     justify-content: space-between;
     padding: 14px 20px;
-    background: #2d1a00;
-    border-bottom: 1px solid #3d2400;
+    background: #0b2014;
+    border-bottom: 1px solid #13301c;
     flex-shrink: 0;
 }
 
@@ -1688,7 +1650,7 @@ const logout = () => router.post('/logout')
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background: #e85c00;
+    background: #00e676;
     border: 4px solid #fff;
     cursor: pointer;
     position: relative;
@@ -1696,7 +1658,7 @@ const logout = () => router.post('/logout')
     align-items: center;
     justify-content: center;
     transition: transform 0.12s, opacity 0.12s;
-    box-shadow: 0 0 0 3px rgba(232, 92, 0, 0.4);
+    box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.4);
 }
 
 .afs-camera-capture-btn:hover {
@@ -1716,63 +1678,207 @@ const logout = () => router.post('/logout')
     display: block;
 }
 
-.afs-demo-group {
-    margin-left: auto;
+/* ── AI markdown content ──────────────────────────────────────────────────── */
+.ai-message-content :deep(h1),
+.ai-message-content :deep(h2),
+.ai-message-content :deep(h3) {
+    color: #4ade80;
+    font-weight: 600;
+    margin: 8px 0 4px;
+}
+.ai-message-content :deep(p) { margin: 4px 0; line-height: 1.6; }
+.ai-message-content :deep(table) {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+}
+.ai-message-content :deep(td),
+.ai-message-content :deep(th) {
+    border: 1px solid #2d4a2d;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+.ai-message-content :deep(th) { background: #1a3a1a; color: #4ade80; }
+.ai-message-content :deep(tr:nth-child(even)) { background: #0d1a0d; }
+.ai-message-content :deep(strong) { color: #86efac; }
+.ai-message-content :deep(hr) { border-color: #2d4a2d; margin: 8px 0; }
+.ai-message-content :deep(ul),
+.ai-message-content :deep(ol) { padding-left: 20px; margin: 4px 0; }
+.ai-message-content :deep(li) { margin: 2px 0; }
+
+/* ── Region info panel ────────────────────────────────────────────────────── */
+.afs-region-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 300px;
+    max-height: calc(100% - 80px);
+    background: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    border-top: 2px solid #4ade80;
+    border-radius: 12px;
+    overflow-y: auto;
+    z-index: 20;
     display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.afs-region-panel::-webkit-scrollbar { width: 3px; }
+.afs-region-panel::-webkit-scrollbar-track { background: #1a1a1a; }
+.afs-region-panel::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
+
+.afs-rp__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid #2d2d2d;
+    flex-shrink: 0;
+}
+
+.afs-rp__title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4ade80;
+    letter-spacing: 0.6px;
+}
+
+.afs-rp__close {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 0.15s;
+}
+.afs-rp__close:hover { color: #fff; }
+
+.afs-rp__section {
+    padding: 12px 14px;
+    border-bottom: 1px solid #222;
+}
+.afs-rp__section:last-of-type { border-bottom: none; }
+
+.afs-rp__section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+/* ── Fire block ── */
+.afs-rp__fire-block {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 }
 
-.afs-demo-label {
+.afs-rp__update-text {
+    font-size: 11px;
+    color: #555;
+    margin-top: 6px;
+    line-height: 1.5;
+    width: 100%;
+}
+
+/* ── Badges ── */
+.afs-rp-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.afs-rp-badge--green  { background: rgba(74,222,128,0.15);  color: #4ade80; border: 1px solid rgba(74,222,128,0.35); }
+.afs-rp-badge--yellow { background: rgba(202,138,4,0.15);   color: #facc15; border: 1px solid rgba(202,138,4,0.35); }
+.afs-rp-badge--orange { background: rgba(234,88,12,0.15);   color: #fb923c; border: 1px solid rgba(234,88,12,0.35); }
+.afs-rp-badge--red    { background: rgba(220,38,38,0.15);   color: #f87171; border: 1px solid rgba(220,38,38,0.35); }
+
+/* ── Eco row ── */
+.afs-rp__eco-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.afs-rp__eco-card {
+    background: #111;
+    border: 1px solid #2d2d2d;
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.afs-rp__eco-label {
+    font-size: 10px;
+    color: #555;
+    font-weight: 600;
+}
+
+.afs-rp__eco-value {
+    font-size: 15px;
+    font-weight: 700;
+    color: #c8bfb5;
+}
+.afs-rp__val--red    { color: #f87171; }
+.afs-rp__val--orange { color: #fb923c; }
+.afs-rp__val--green  { color: #4ade80; }
+
+/* ── Hotspots table ── */
+.afs-rp__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.afs-rp__table thead tr { background: #111; }
+
+.afs-rp__table th {
+    padding: 6px 8px;
+    text-align: left;
+    color: #555;
     font-size: 10px;
     font-weight: 700;
-    color: #555;
-    letter-spacing: 0.5px;
     text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 1px solid #2d2d2d;
 }
 
-.afs-demo-btn {
-    padding: 5px 12px;
-    border-radius: 8px;
-    border: 1px solid #e85c00;
-    background: transparent;
-    color: #e85c00;
+.afs-rp__table tbody tr {
+    border-bottom: 1px solid #222;
+    transition: background 0.1s;
+}
+.afs-rp__table tbody tr:hover { background: #1e2a20; }
+
+.afs-rp__table td {
+    padding: 6px 8px;
+    color: #c8bfb5;
+}
+
+/* ── AI button ── */
+.afs-rp__ai-btn {
+    margin: 12px 14px;
+    padding: 9px 14px;
+    background: #4ade80;
+    color: #000;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, opacity 0.15s;
+    transition: background 0.18s;
+    width: calc(100% - 28px);
+    flex-shrink: 0;
 }
+.afs-rp__ai-btn:hover { background: #22c55e; }
 
-.afs-demo-btn:hover:not(:disabled) {
-    background: rgba(232, 92, 0, 0.15);
-}
-
-.afs-demo-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.afs-demo-btn--active {
-    background: rgba(204, 0, 0, 0.2);
-    border-color: #cc0000;
-    color: #ff6666;
-}
-
-.afs-demo-btn--safe {
-    border-color: #2a7a2a;
-    color: #4caf50;
-}
-
-.afs-demo-btn--safe:hover:not(:disabled) {
-    background: rgba(76, 175, 80, 0.15);
-}
-
-.afs-demo-btn--fire {
-    border-color: #cc0000;
-    color: #ff6666;
-}
-
-.afs-demo-btn--fire:hover:not(:disabled) {
-    background: rgba(204, 0, 0, 0.15);
-}
 </style>

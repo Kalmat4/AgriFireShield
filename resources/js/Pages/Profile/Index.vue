@@ -38,23 +38,7 @@ const logout = () => {
 
 <template>
     <AppLayout>
-        <Head title="Профиль — AgriFireShield" />
-
-        <!-- Header -->
-        <header class="afs-header">
-            <div class="afs-header__inner">
-                <Link href="/dashboard" class="afs-logo">
-                    <span class="afs-logo__icon">🔥</span>
-                    <span class="afs-logo__text">AgriFireShield</span>
-                </Link>
-                <nav class="afs-nav">
-                    <Link href="/dashboard" class="afs-nav__btn">Главная</Link>
-                    <Link href="/profile" class="afs-nav__btn">Профиль</Link>
-                    <button class="afs-nav__logout" @click="logout">Выйти</button>
-                </nav>
-            </div>
-        </header>
-
+        <Head title="Профиль — AgroMind KZ" />
         <!-- Page content -->
         <main class="afs-main">
 
@@ -178,109 +162,37 @@ const logout = () => {
 </template>
 
 <style scoped>
-/* ── Header (same as Dashboard) ── */
-.afs-header {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d1a00 100%);
-    border-bottom: 3px solid #e85c00;
-    box-shadow: 0 2px 12px rgba(232, 92, 0, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-}
-.afs-header__inner {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-.afs-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    text-decoration: none;
-    user-select: none;
-}
-.afs-logo__icon {
-    font-size: 28px;
-    filter: drop-shadow(0 0 6px rgba(255, 120, 0, 0.8));
-}
-.afs-logo__text {
-    font-size: 20px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: 0.5px;
-    font-family: 'Segoe UI', system-ui, sans-serif;
-}
-.afs-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.afs-nav__btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    text-decoration: none;
-    transition: background 0.18s, color 0.18s;
-    border: 1px solid transparent;
-}
-.afs-nav__btn:hover,
-.afs-nav__btn.router-link-active {
-    background: rgba(232, 92, 0, 0.18);
-    color: #ffffff;
-    border-color: rgba(232, 92, 0, 0.4);
-}
-.afs-nav__logout {
-    display: inline-flex;
-    align-items: center;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: #e0d6cc;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s, border-color 0.18s;
-}
-.afs-nav__logout:hover {
-    background: rgba(255, 60, 0, 0.2);
-    color: #ffffff;
-    border-color: rgba(255, 60, 0, 0.5);
-}
-
 /* ── Page ── */
 .afs-main {
     max-width: 1200px;
     margin: 0 auto;
     padding: 40px 24px;
 }
+
 .afs-page-title {
     margin-bottom: 32px;
 }
+
 .afs-page-title h1 {
     font-size: 28px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: #e5e5e5;
     margin: 0 0 4px;
+    border-left: 3px solid #4ade80;
+    padding-left: 12px;
 }
+
 .afs-page-title p {
-    color: #777;
-    margin: 0;
+    color: #888;
+    margin: 0 0 0 15px;
     font-size: 14px;
 }
 
+/* ── Flash ── */
 .afs-flash {
-    background: #e6f9ee;
-    border: 1px solid #6fcf97;
-    color: #1a7a3c;
+    background: rgba(74, 222, 128, 0.1);
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    color: #4ade80;
     border-radius: 10px;
     padding: 12px 18px;
     margin-bottom: 24px;
@@ -288,6 +200,7 @@ const logout = () => {
     font-weight: 500;
 }
 
+/* ── Cards grid ── */
 .afs-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
@@ -296,25 +209,30 @@ const logout = () => {
 
 /* ── Card ── */
 .afs-card {
-    background: #ffffff;
-    border-radius: 16px;
+    background: #1a1a1a;
+    border-radius: 12px;
     padding: 28px;
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
-    border: 1px solid #eeece8;
+    box-shadow: none;
+    border: 1px solid #2d2d2d;
 }
+
 .afs-card__header {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #2d2d2d;
 }
+
 .afs-card__icon {
     font-size: 22px;
 }
+
 .afs-card__header h2 {
     font-size: 17px;
     font-weight: 700;
-    color: #1a1a1a;
+    color: #e5e5e5;
     margin: 0;
 }
 
@@ -324,61 +242,72 @@ const logout = () => {
     flex-direction: column;
     gap: 18px;
 }
+
 .afs-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
+
 .afs-field label {
     font-size: 13px;
     font-weight: 600;
-    color: #444;
+    color: #888;
 }
+
 .afs-field input {
     padding: 10px 14px;
-    border: 1.5px solid #ddd;
-    border-radius: 10px;
-    font-size: 15px;
-    color: #1a1a1a;
-    background: #fafafa;
+    border: 1px solid #2d2d2d;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #e5e5e5;
+    background: #111;
     transition: border-color 0.18s, box-shadow 0.18s;
     outline: none;
+    font-family: inherit;
 }
+
+.afs-field input::placeholder {
+    color: #555;
+}
+
 .afs-field input:focus {
-    border-color: #e85c00;
-    box-shadow: 0 0 0 3px rgba(232, 92, 0, 0.12);
-    background: #fff;
+    border-color: #4ade80;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.1);
 }
+
 .afs-input--error {
-    border-color: #e53935 !important;
+    border-color: #f87171 !important;
 }
+
 .afs-error {
     font-size: 12px;
-    color: #e53935;
+    color: #f87171;
 }
 
 /* ── Button ── */
 .afs-btn {
-    padding: 11px 22px;
-    border-radius: 10px;
-    font-size: 15px;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     border: none;
-    transition: opacity 0.18s, transform 0.12s;
+    transition: background 0.18s;
     align-self: flex-start;
 }
+
 .afs-btn--primary {
-    background: linear-gradient(135deg, #e85c00, #ff8c00);
-    color: #fff;
-    box-shadow: 0 3px 12px rgba(232, 92, 0, 0.35);
+    background: #4ade80;
+    color: #000;
 }
+
 .afs-btn--primary:hover:not(:disabled) {
-    opacity: 0.92;
-    transform: translateY(-1px);
+    background: #22c55e;
 }
+
 .afs-btn:disabled {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
 }
 </style>
