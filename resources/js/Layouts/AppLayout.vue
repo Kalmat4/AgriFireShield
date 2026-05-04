@@ -18,7 +18,7 @@ const setLocale = (lang) => {
             <div class="afs-header__inner">
                 <Link href="/dashboard" class="afs-logo">
                     <span class="afs-logo__icon">🌿</span>
-                    <span class="afs-logo__text">AgroMind KZ11</span>
+                    <span class="afs-logo__text">AgroMind KZ</span>
                 </Link>
                 <nav class="afs-nav">
                     <Link href="/dashboard" class="afs-nav__btn">{{ t('nav.home') }}</Link>
